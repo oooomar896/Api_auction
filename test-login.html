@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>اختبار API - Odoo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            padding: 40px;
+            width: 100%;
+            max-width: 500px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #666;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 14px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .result.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .result.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .config-section {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e1e5e9;
+        }
+
+        .config-section h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .config-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .config-row input {
+            flex: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔐 اختبار تسجيل الدخول</h1>
+            <p>اختبار الاتصال مع Odoo API</p>
+        </div>
+
+        <div class="config-section">
+            <h3>⚙️ إعدادات الاتصال</h3>
+            <div class="config-row">
+                <input type="text" id="base-url" placeholder="رابط Odoo" value="http://localhost:8069">
+            </div>
+            <div class="config-row">
+                <input type="text" id="database" placeholder="اسم قاعدة البيانات" value="odoo">
+            </div>
+        </div>
+
+        <form id="login-form">
+            <div class="form-group">
+                <label for="email">البريد الإلكتروني</label>
+                <input type="email" id="email" required placeholder="أدخل بريدك الإلكتروني">
+            </div>
+            
+            <div class="form-group">
+                <label for="password">كلمة المرور</label>
+                <input type="password" id="password" required placeholder="أدخل كلمة المرور">
+            </div>
+            
+            <button type="submit" class="btn" id="login-btn">
+                <span id="btn-text">تسجيل الدخول</span>
+                <span id="btn-loading" style="display: none;">جاري التحميل...</span>
+            </button>
+        </form>
+
+        <div id="result" class="result" style="display: none;"></div>
+    </div>
+
+    <script>
+        class OdooAPITester {
+            constructor() {
+                this.baseURL = 'http://localhost:8069';
+                this.init();
+            }
+
+            init() {
+                this.loadConfig();
+                this.bindEvents();
+            }
+
+            loadConfig() {
+                const savedURL = localStorage.getItem('odoo_base_url');
+                const savedDB = localStorage.getItem('odoo_database');
+                
+                if (savedURL) document.getElementById('base-url').value = savedURL;
+                if (savedDB) document.getElementById('database').value = savedDB;
+            }
+
+            saveConfig() {
+                const baseURL = document.getElementById('base-url').value;
+                const database = document.getElementById('database').value;
+                
+                localStorage.setItem('odoo_base_url', baseURL);
+                localStorage.setItem('odoo_database', database);
+                
+                this.baseURL = baseURL;
+            }
+
+            bindEvents() {
+                document.getElementById('login-form').addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    this.login();
+                });
+
+                // Save config on change
+                document.getElementById('base-url').addEventListener('change', () => this.saveConfig());
+                document.getElementById('database').addEventListener('change', () => this.saveConfig());
+            }
+
+            async login() {
+                const email = document.getElementById('email').value;
+                const password = document.getElementById('password').value;
+                
+                this.setLoading(true);
+                this.showResult('', '');
+                
+                try {
+                    // Test connection first
+                    await this.testConnection();
+                    
+                    // Attempt login
+                    const response = await this.authenticate(email, password);
+                    
+                    if (response.success) {
+                        this.showResult('تم تسجيل الدخول بنجاح!', 'success');
+                        this.showResult(JSON.stringify(response.data, null, 2), 'success');
+                    } else {
+                        this.showResult(`خطأ في تسجيل الدخول: ${response.error}`, 'error');
+                    }
+                    
+                } catch (error) {
+                    this.showResult(`خطأ في الاتصال: ${error.message}`, 'error');
+                } finally {
+                    this.setLoading(false);
+                }
+            }
+
+            async testConnection() {
+                try {
+                    const response = await fetch(`${this.baseURL}/api/v1/config`, {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json'
+                        }
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    
+                    const data = await response.json();
+                    console.log('Connection test successful:', data);
+                    
+                } catch (error) {
+                    throw new Error(`فشل في الاتصال بالخادم: ${error.message}`);
+                }
+            }
+
+            async authenticate(email, password) {
+                const response = await fetch(`${this.baseURL}/api/v1/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email: email,
+                        password: password
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                return await response.json();
+            }
+
+            setLoading(loading) {
+                const btn = document.getElementById('login-btn');
+                const btnText = document.getElementById('btn-text');
+                const btnLoading = document.getElementById('btn-loading');
+                
+                if (loading) {
+                    btn.disabled = true;
+                    btnText.style.display = 'none';
+                    btnLoading.style.display = 'inline';
+                } else {
+                    btn.disabled = false;
+                    btnText.style.display = 'inline';
+                    btnLoading.style.display = 'none';
+                }
+            }
+
+            showResult(message, type) {
+                const resultDiv = document.getElementById('result');
+                resultDiv.style.display = 'block';
+                resultDiv.className = `result ${type}`;
+                resultDiv.textContent = message;
+            }
+        }
+
+        // Initialize the tester when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new OdooAPITester();
+        });
+    </script>
+</body>
+</html> 
